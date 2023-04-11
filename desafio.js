@@ -38,7 +38,7 @@ const productManager = new ProductManager()
 productManager.addProduct("Jenga", "Juego de caja", 1000, "thumbnail", 3)
 productManager.addProduct("Mochila", "Mochila", 500, "thumbnail", 10)
 console.log(productManager.getProducts())
-console.log(productManager.getProductById())
+console.log(productManager.getProductById(2))
 
 
 
