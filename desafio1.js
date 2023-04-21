@@ -7,13 +7,14 @@ class ProductManager{
         return this.products
     }
 
-    addProduct(title, description, price, thumbnail, stock){
+    addProduct(title, description, price, thumbnail, code, stock){
         const product = {
             title,
             description,
             price,
             thumbnail,
             id: this.#nuevoId() + 1,
+            code,
             stock
         };
         this.products.push(product)
