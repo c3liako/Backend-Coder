@@ -9,16 +9,16 @@ app.use(express.urlencoded({
 
 
 const port = 8080;
-const product = new ProductManager('./product.json');
+const productManager = new ProductManager(path.resolve(__dirname , 'products.json'));
 
 app.listen(port, ()=>{
-    console.log('App listenning on port http://localhost:${port}')
+    console.log(`App listenning on port http://localhost:${port}`)
 });
 
-app.get("appi/products", async (req,res) => {
+app.get("/api/products", async (req,res) => {
     try{
         let limit = req.query.limit;
-        const products = await productManager.getProduct();
+        const products = await productManager.getProducts();
         if(!limit){
             return res.status(200).json(products)
         }
@@ -41,7 +41,5 @@ app.get("api/product/:id", async (req, res) => {
     } catch (error) {
         res.status(400).json({error: error.message})
     }
-
-    
 
 })
