@@ -1,5 +1,6 @@
 const express = require('express');
 const ProductManager = require('./ProductManager.js');
+const path = require('path');
 
 const app = express();
 app.use(express.json())
@@ -28,7 +29,7 @@ app.get("/api/products", async (req,res) => {
         }
         res.status(200).json(products.slice(0, limit))
     }catch (error){
-        res.status(400).json({error: error.massage})
+        res.status(404).json({error: error.massage})
     }
 });
 
@@ -39,7 +40,7 @@ app.get("api/product/:id", async (req, res) => {
         res.status(200).json(product)
 
     } catch (error) {
-        res.status(400).json({error: error.message})
+        res.status(404).json({error: error.message})
     }
 
 })
