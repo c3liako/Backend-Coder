@@ -1,25 +1,54 @@
 import express from 'express';
 import morgan from 'morgan';
 import {errorHandler} from './middlewares/errorHandler.js';
+import handlebars  from 'express-handlebars';
+import { Server } from 'socket.io';
+
 import {__dirname} from './path.js';
-
-
+import viewsRouter from './routes/views.router.js'
 import productsRouter from './routes/products.router.js';
-import cartsRouter from './routes/cart.router.js'
+import cartsRouter from './routes/carts.router.js'
 
 const app = express();
+const port = 8080;
 
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
-app.use(morgan('dev'));
-app.use(errorHandler);
+app.use(express.urlencoded({ extended: true }));
 
-app.use('/products', productsRouter);
-app.use('/carts', cartsRouter);
+const http = app.listen(port, () => {
+    try {
+        console.log(`Listening on port ${port}`);
+    } catch (err) {
+        res.status(400).json({ message: err.message })
+        console.log(err)
+    }
+})
 
+const io = new Server(http)
 
-const PORT = 8080
+app.engine('handlebars', handlebars.engine());
+app.set('view engine', 'handlebars');
+app.set('views', __dirname + '/views');
+app.use(express.static(__dirname + '/public'));
+app.use('/products', productsRouter)
+app.use('/carts', cartsRouter)
+app.use('/views', viewsRouter)
 
-app.listen(PORT,()=>{
-    console.log(`server OK on port: ${PORT} `)
+io.on('connection', async (socket) => {
+    console.log('User connected (ID: ', socket.id, ')');
+    socket.on('disconnect', () => {
+        console.log('User disconnected (ID:', socket.id, ')');
+    })
+    socket.on('message', (message) => {
+        console.log(message)
+    })
+    socket.emit('productsArray', await productManager.getProducts());
+    socket.on('newProduct', async (prod) => {
+        await productManager.addProduct(prod);
+        const arrayUpdate = await productManager.getProducts();
+        socket.emit('arrayUpdate', arrayUpdate);
+        socket.on('update', (update) => {
+            console.log(update);
+        })
+    })
 })

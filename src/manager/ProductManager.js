@@ -1,127 +1,83 @@
 import fs from 'fs';
+const path = './products.json'
 
+class ProductManager {
+    constructor() { };
 
-export default class ProductManager{
-    constructor(path){
-        this.path = path;
-        this.products = [];
-    }
-
-/* --------------------------- AÑADIR UN PRODUCTO --------------------------- */
-
-    async addProduct(product){
-        try {
-            const products = await this.getProducts();
-            const existingCode = products.find((prod)=> prod.code===product.code)
-            if(existingCode){
-            return console.log('Elcodigo ya existe')
-            } if(!product.code || !product.title || !product.description || !product.price ||!product.stock || !product.thumbnail){
-            return console.log ('Falata rellenar campos')
-            } 
-            product.id = await this.#getNewId();
-        
-            products.push(product);
-            await fs.promises.writeFile(this.path, JSON.stringify(products), "utf-8")
-        
-            return console.log('Se añadio el producto')
-        } catch (error) {
-            console.log(error)
-        }
-        
-    }
-
-/* --------------------------- ID AUTO INCREMENTAL -------------------------- */
-
-    async #getNewId(){
-        const products = await this.getProducts();
+    async #getMaxId() {
         let maxId = 0;
-        if (products.length > 0){
-            products.forEach(product => {if(product.id > maxId) maxId = product.id }   );
-        }
-        return maxId + 1;
+        const products = await this.getProducts();
+        products.map((prod) => {
+            if (prod.id > maxId) maxId = prod.id;
+        });
+        return maxId;
     }
 
-/* --------------------------- LISTA DE PRODUCTOS --------------------------- */
-
-    async getProducts(){
-        try{
-            if(fs.existsSync(this.path)){
-                const products = await fs.promises.readFile(this.path, 'utf-8');
-                const productsJS = JSON.parse(products);
-                return productsJS;
-            }else {
-                return [] ;
-            }
-        }catch (error){
-            console.log(error)
-        }
-    }
-
-/* ----------------------- BUSQUEDA DE PRODUCTO POR ID ---------------------- */
-
-    async getProductById(id){
-
+    async addProduct(prod) {
         try {
+            const obj = {
+                id: await this.#getMaxId() + 1,
+                ...prod
+            };
             const productsFile = await this.getProducts();
-            const product = productsFile.find ((product) => product.id === id);
-            if(!product){
-            console.log(`Id : ${id} . Not Found`);
-            }
-            return product;
-        } catch (error) {
-            console.log(error)
-        }
-        
+            productsFile.push(obj)
+            await fs.promises.writeFile(path, JSON.stringify(productsFile))
+            return obj
+        } catch (err) { console.log(err) }
     }
 
-/* --------------------------- ACTUALIZAR PRODUCTO -------------------------- */
-
-    async updateProduct(id, updates){
-
+    async getProducts() {
         try {
+            if (fs.existsSync(path)) {
+                const products = await fs.promises.readFile(path, 'utf-8')
+                const productsJS = JSON.parse(products)
+                return productsJS
+            } else { return [] }
+        } catch (err) { console.log(err) }
+    }
+
+    async getProductById(id) {
+        try {
+            const products = await fs.promises.readFile(path, 'utf-8')
+            const productsJS = JSON.parse(products)
+            const foundProduct = productsJS.find((product) => product.id === id)
+            if (foundProduct) return foundProduct
+        } catch (err) { console.log(err) }
+    }
+
+    async updateProduct(id, obj) {
+        try {
+            const products = await fs.promises.readFile(path, 'utf-8')
+            const productsJS = JSON.parse(products)
+            const indexFound = productsJS.findIndex((product) => product.id === id)
+            if (indexFound === 0 || indexFound) {
+                productsJS[indexFound] = { id, ...obj }
+                await fs.promises.writeFile(path, JSON.stringify(productsJS))
+            } else return `Error: Could not find product with specified ID (ID: ${id})`
+        } catch (err) { console.log(err) }
+    }
+
+    async deleteProduct(id) {
+        try {
+            const products = await fs.promises.readFile(path, 'utf-8')
+            const productsJS = JSON.parse(products)
+            const foundIndex = productsJS.findIndex((product) => product.id == id)
+            if (productsJS.find((product) => product.id === id)) {
+                productsJS.splice(foundIndex, 1)
+                await fs.promises.writeFile(path, JSON.stringify(productsJS));
+            }
             const productsFile = await this.getProducts();
-            const productIndex = productsFile.findIndex((product) => product.id === id);
-            if (productIndex === -1){
-                console.log(`Id : ${id} . Not Found`);
-            }
-            const updatedProduct = Object.assign ({}, productsFile[productIndex], updates);
-            productsFile[productIndex] = updatedProduct;
-            await fs.promises.writeFile(this.path, JSON.stringify(productsFile), 'utf-8');
-        } catch (error) {
-            console.log(error)
-        }
-
-        
+            await fs.promises.writeFile(path, JSON.stringify(productsFile));
+        } catch (err) { console.log(err) }
     }
 
-/* -------------------------- ELIMINAR UN PRODUCTO -------------------------- */
-
-    async deleteProduct(id){
-
+    async deleteAllProducts() {
         try {
-            const productsFile = await this.getProducts();
-            const productIndex = productsFile.findIndex((product) => product.id ===id);
-            if(productIndex===-1){
-                console.log(`Id : ${id} . Not Found`);
+            if(fs.existsSync(path)){
+                await fs.promises.unlink(path)
             }
-            productsFile.splice(productIndex, 1);
-            await fs.promises.writeFile(this.path, JSON.stringify(productsFile), 'utf-8');    
-        } catch (error) {
-            console.log(error)
-        }
-    
-    }
-
-
-
-/* ---------------------- ELIMINAR TODOS LOS PRODUCTOS ---------------------- */
-    async deleteAllProdcuts(){
-        try {
-            if(fs.existsSync(this.path)){
-                await fs.promises.unlink(this.path)
-            }
-        } catch (error) {
-            console.log(error)
-        }
+        } catch (err) { console.log(err) }
     }
 }
+
+export const productManager = new ProductManager;

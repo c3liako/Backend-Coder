@@ -1,139 +1,97 @@
-import fs from 'fs'
-import ProductManager from './ProductManager.js';
+import fs from 'fs';
+const pathCarts = './carts.json'
+const pathProducts = './products.json'
 
-const productManager = new ProductManager('./src/fs/products.json');
+export class CartManager {
+    constructor() { };
 
-export default class CartManager{
-
-    constructor (path){
-        this.path = path; 
+    async #getMaxId() {
+        let maxId = 0;
+        const carts = await this.getCarts();
+        carts.map((cart) => {
+            if (cart.id > maxId) maxId = cart.id;
+        });
+        return maxId;
     }
 
-    async readDataFile(){
+    async createCart() {
         try {
-            if (fs.existsSync(this.path)){
-                const cartsString = await fs.promises.readFile(this.path, "utf-8");
-                return JSON.parse(cartsString);
-            }
-        } catch (error) {
-            if (error.code === 'ENOENT'){
-                console.log('File not Found!');
-            }else{
-                throw error;
-            }
-        }
-    }
-
-    async addCart(){
-        try {
-            let carts =await this.readDataFile();
-            let id = carts.length > 0 ? carts[carts.length - 1].id + 1 : 1;
-            carts.push({
-                id,
+            const cart = {
+                id: await this.#getMaxId() + 1,
                 products: []
-            });
-            let newCart = carts.find((cId)=> cId.id=== id);
-            const cartsString = JSON.stringify(carts, null, 2);
-            await fs.promises.writeFile(this.path, cartsString);
-            console.log('Cart created succesfully!');
-        } catch (error) {
-            throw new Error(error.massage);
-        }
+            };
+            const cartsFile = await this.getCarts();
+            cartsFile.push(cart)
+            await fs.promises.writeFile(pathCarts, JSON.stringify(cartsFile))
+            return cart
+        } catch (err) { console.log(err) }
     }
 
-    async getCartById(id){
+    async getCarts() {
         try {
-            let carts = await this.readDataFile();
-            let checkId = carts.find((cId)=> cId.id===id);
-            if(!checkId){
-                throw new Error('Invalid id, cart not found');
-            }
-            return checkId;
-        } catch (error) {
-            throw new Error(error.massage);
-        }
+            if (fs.existsSync(pathCarts)) {
+                const carts = await fs.promises.readFile(pathCarts, 'utf-8')
+                const cartsJS = JSON.parse(carts)
+                return cartsJS
+            } else return []
+        } catch (err) { console.log(err) }
     }
 
-    async addProductToCart(productId, cartId){
+    async getCartById(id) {
         try {
-            let carts = await this.readDataFile();
-            let productsFile = await productManager.readDataFile()
-            
-            let checkPId = productsFile.find((pId)=>pId.id===productId);
-            if(!checkPId){
-                throw new Error ('Invalid id, product not found');
-            }
-
-            let foundCart = carts.find((c)=>c.id===cartId);
-            if(foundCart){
-                let foundProduct = foundCart.products.find((p)=> p.id===productId);
-                if(foundProduct){
-                    foundProduct.quantity += 1;
-                }else{
-                    foundCart.products.push({
-                        id: productId,
-                        quantity: 1,
-                    });
-                }
-                await fs.promises.writeFile(this.path, JSON.stringify(carts));
-                console.log(`Product ${productId} added succesfully to cart ${cartId}`);
-            }else{
-                throw new Error('Invalid id');
-            }
-            
-            
-        } catch (error) {
-            throw new Error (error.massage);
-            
-        }
+            const carts = await fs.promises.readFile(pathCarts, 'utf-8')
+            const cartsJS = JSON.parse(carts)
+            const foundCart = cartsJS.find((cart) => cart.id === id)
+            if (foundCart) return foundCart
+        } catch (err) { console.log(err) }
     }
 
-    async deleteCart(id){
+    async addToCart(cid, pid) {
         try {
-            let carts = await this.readDataFile();
-            let index = carts.findIndex((cId)=>cId.id===id);
-            if(index===-1){
-                throw new Error('Cannot delete. Not found');
-            }else{
-                carts.splice(index, 1);
-            }
-            const cartsString = JSON.stringify(carts);
-            await fs.promises.writeFile(this.path, cartsString);
-            console.log(`Cart ${id} deleted succesfully!`);
-        } catch (error) {
-            throw new Error(error.message);
-        }
-    }
-
-    async deleteProductFromCart(productId, cartId){
-        try {
-            let carts = await this.readDataFile();
-            let productsFile = await productManager.readDataFile();
-
-            let checkPId = productsFile.find((pId) => pId.id === productId);
-            if (!checkPId) {
-            throw new Error("Invalid id, product not found");
-            }
-
-            let findedCart = carts.find((c) => c.id === cartId);
-            if (findedCart) {
-                let findedProduct = findedCart.products.find((p) => p.id === productId);
-                if (findedProduct) {
-                        if(findedProduct.quantity === 1){
-                            findedCart.products.splice(findedCart.products.indexOf(findedProduct), 1);
-                        }else{
-                        findedProduct.quantity -= 1;
+            const cartsFile = await fs.promises.readFile(pathCarts, 'utf-8')
+            const cartsJS = JSON.parse(cartsFile)
+            const foundCart = cartsJS.find((cart) => cart.id === cid)
+            if (foundCart) {
+                const productsFile = await fs.promises.readFile(pathProducts, 'utf-8')
+                const productsJS = JSON.parse(productsFile)
+                const foundProduct = productsJS.find((prod) => prod.id === pid)
+                if (foundProduct) {
+                    const prodInCart = foundCart.products.find((prod) => prod.id === foundProduct.id)
+                    if (!prodInCart) {
+                        const pushedProduct = {
+                            id: foundProduct.id,
+                            qty: 1
                         }
+                        foundCart.products.push(pushedProduct)
+                        await fs.promises.writeFile(pathCarts, JSON.stringify(cartsJS))
                     } else {
-                        throw new Error(`Product with id: ${productId} was not found in the cart with id:${cartId}`)
-                        }
-                await fs.promises.writeFile(this.path, JSON.stringify(carts));
-                console.log(`Product ${productId} was deleted succesfully from cart ${cartId}`);
-                } else {
-                    throw new Error("Invalid id, cart not found");
-                }
-        } catch (error) {
-            throw new Error(error.massage);
-        }
+                        prodInCart.qty++
+                        await fs.promises.writeFile(pathCarts, JSON.stringify(cartsJS))
+                    }
+                } else return 'prod_404'
+            } else return 'cart_404'
+        } catch (err) { console.log(err) }
+    }
+
+    async deleteCart(id) {
+        try {
+            const carts = await fs.promises.readFile(pathCarts, 'utf-8')
+            const cartsJS = JSON.parse(carts)
+            const foundIndex = cartsJS.findIndex((cart) => cart.id == id)
+            if (cartsJS.find((cart) => cart.id === id)) {
+                cartsJS.splice(foundIndex, 1)
+                await fs.promises.writeFile(pathCarts, JSON.stringify(cartsJS));
+            }
+            const cartsFile = await this.getCarts();
+            await fs.promises.writeFile(pathCarts, JSON.stringify(cartsFile));
+        } catch (err) { console.log(err) }
+    }
+
+    async deleteAllCarts() {
+        try {
+            if (fs.existsSync(pathCarts)) {
+                await fs.promises.unlink(pathCarts)
+            }
+        } catch (err) { console.log(err) }
     }
 }
